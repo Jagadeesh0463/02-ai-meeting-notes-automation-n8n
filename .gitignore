@@ -1,0 +1,67 @@
+# ==========================
+# Environment variables
+# ==========================
+.env
+.env.local
+.env.*
+
+# ==========================
+# n8n secrets / credentials
+# ==========================
+credentials.json
+n8n-credentials.json
+*.sqlite
+database.sqlite
+*.db
+
+# ==========================
+# Logs
+# ==========================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==========================
+# Node modules
+# ==========================
+node_modules/
+
+# ==========================
+# OS files
+# ==========================
+.DS_Store
+Thumbs.db
+
+# ==========================
+# IDE files
+# ==========================
+.vscode/
+.idea/
+
+# ==========================
+# Temporary files
+# ==========================
+tmp/
+temp/
+.cache/
+
+# ==========================
+# Local exports / backups
+# ==========================
+backup/
+exports/
+*.backup.json
+
+# ==========================
+# Personal workflow copies
+# ==========================
+workflow-private.json
+workflow-local.json
+
+# ==========================
+# Python cache (if scripts added)
+# ==========================
+__pycache__/
+*.pyc
