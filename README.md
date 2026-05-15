@@ -1,65 +1,88 @@
 # AI Meeting Notes & Action Item Automation
 
-An AI-powered workflow that automatically summarizes meetings, extracts action items, assigns owners and priorities, stores tasks in Google Sheets, and sends recap emails.
+An AI-powered meeting automation workflow built using **n8n**, **Groq Llama 3.1**, **Gmail**, and **Google Sheets**.
 
-Built using n8n, Groq Llama 3.1, Gmail, and Google Sheets.
+The system automatically summarizes meetings, extracts action items, assigns owners and priorities, stores tasks, sends recap emails, and tracks reminders — all in one workflow.
 
 ---
 
 # Overview
 
-Managing meeting notes manually is time-consuming and often causes important action items to get lost.
+Meeting discussions often end with action items getting forgotten, deadlines being missed, and no structured follow-up process.
 
-This workflow automates the entire process by using AI to:
+This workflow solves that problem by using AI to automatically:
 
-* summarize discussions
-* extract actionable tasks
-* identify task owners
-* assign priorities
-* track deadlines
-* store tasks automatically
-* send clean meeting recap emails
+- summarize meetings
+- extract action items
+- identify owners
+- assign priorities
+- detect deadlines
+- store tasks
+- send meeting recap emails
+- send reminder emails for pending tasks
+- update reminder status automatically
 
 ---
 
 # Features
 
-* AI meeting summarization
-* Automatic action item extraction
-* Owner assignment
-* Priority classification
-* Deadline detection
-* Google Sheets task tracking
-* Automated Gmail recap emails
-* Structured JSON parsing
-* Professional workflow automation
+✅ AI meeting summarization  
+✅ Automatic action item extraction  
+✅ Owner assignment  
+✅ Priority classification  
+✅ Deadline detection  
+✅ Google Sheets task tracking  
+✅ Gmail meeting recap emails  
+✅ Pending task reminders  
+✅ Reminder status tracking  
+✅ Structured JSON parsing  
+✅ End-to-end workflow automation  
 
 ---
 
 # Workflow Architecture
 
 ```text
-Manual Trigger
+Meeting Input
     ↓
-Meeting Transcript Input
+Meeting Transcript
     ↓
-AI Agent (Groq Llama 3.1)
+Generate Summary & Action Items (Groq Llama 3.1)
     ↓
-Parse AI Output
-    ├── Convert Tasks to Items → Save to Google Sheets
-    └── Send Meeting Recap Email
+Parse Meeting Insights
+    ├── Send Meeting Recap Email
+    │
+    └── Extract Action Items
+             ↓
+        Store Tasks Tracker (Google Sheets)
+             ↓
+        Check Pending Action Items
+             ↓
+        Send Owner Reminder
+             ↓
+        Mark Reminder Sent
 ```
+
+---
+
+# Full Workflow Screenshot
+
+## Workflow Overview
+
+![Workflow Overview](screenshots/meeting-action-items-workflow.png)
 
 ---
 
 # Technologies Used
 
-* n8n
-* Groq API
-* Llama 3.1 8B Instant
-* Google Sheets API
-* Gmail API
-* JavaScript
+| Tool | Purpose |
+|------|----------|
+| n8n | Workflow automation |
+| Groq API | LLM inference |
+| Llama 3.1 8B Instant | Meeting analysis |
+| Gmail API | Recap & reminder emails |
+| Google Sheets API | Task storage & tracking |
+| JavaScript | Parsing and automation logic |
 
 ---
 
@@ -67,92 +90,231 @@ Parse AI Output
 
 The AI model analyzes meeting transcripts and generates:
 
-* meeting summaries
-* action items
-* task owners
-* priorities
-* deadlines
+- Meeting summary
+- Action items
+- Task owners
+- Priorities
+- Deadlines
 
-The workflow converts AI responses into structured JSON for reliable automation.
+Example AI output:
+
+```json
+{
+  "summary": "Discussion about scaling millet powder business",
+  "tasks": [
+    {
+      "task": "Create a proper website",
+      "owner": "Jagadeesh",
+      "deadline": "TBD",
+      "priority": "High"
+    }
+  ]
+}
+```
 
 ---
 
 # Google Sheets Output
 
-Tasks are automatically stored with:
+Tasks are stored automatically with:
 
-* Task
-* Owner
-* Deadline
-* Priority
-* Status
-* Created Timestamp
+| Column | Purpose |
+|---------|----------|
+| Task | Extracted action item |
+| Owner | Responsible person |
+| Deadline | Due date |
+| Priority | High / Medium / Low |
+| Status | Pending / Completed |
+| Reminder Sent | Tracks reminder emails |
+| Created At | Timestamp |
 
-This creates a lightweight AI-powered task management system.
+Example:
+
+| Task | Owner | Status | Reminder Sent |
+|------|------|------|------|
+| Create website | Jagadeesh | Pending | yes |
 
 ---
 
-# Gmail Recap Output
+# Email Outputs
 
-After processing the meeting transcript, the workflow sends a formatted recap email containing:
+## 1. Meeting Recap Email
 
-* meeting summary
-* extracted action items
-* deadlines
-* priorities
-* owners
+Includes:
+
+- Meeting summary
+- Action items
+- Owners
+- Deadlines
+- Priorities
+
+---
+
+## 2. Owner Reminder Email
+
+Automatically sent for:
+
+```text
+Status = Pending
+```
+
+Reminder example:
+
+```text
+Reminder: Pending Meeting Action Item
+
+Task:
+Create website
+
+Owner:
+Jagadeesh
+
+Priority:
+High
+```
 
 ---
 
 # Example Use Cases
 
-* Client meetings
-* Team standups
-* Project discussions
-* Sales calls
-* Operations meetings
-* Internal planning sessions
+- Client meetings
+- Team standups
+- Project discussions
+- Operations meetings
+- Sales calls
+- Startup planning
+- Internal reviews
+
+---
+
+# Project Structure
+
+```text
+.
+├── meeting_action_items_workflow.json
+├── README.md
+├── .gitignore
+└── screenshots/
+      └── meeting-action-items-workflow.png
+```
 
 ---
 
 # Setup Instructions
 
-1. Import workflow JSON into n8n
-2. Configure Groq API credentials
-3. Configure Gmail OAuth
-4. Configure Google Sheets OAuth
-5. Update Google Sheet columns:
+## 1. Clone repository
 
-   * Task
-   * Owner
-   * Deadline
-   * Priority
-   * Status
-   * Created At
-6. Execute workflow
+```bash
+git clone https://github.com/your-username/repository-name.git
+cd repository-name
+```
+
+---
+
+## 2. Import workflow
+
+Open n8n:
+
+```text
+Workflows
+↓
+Import
+↓
+Select JSON workflow
+```
+
+---
+
+## 3. Configure credentials
+
+Connect:
+
+- Groq API
+- Gmail OAuth
+- Google Sheets OAuth
+
+---
+
+## 4. Create Google Sheet
+
+Columns required:
+
+```text
+Task
+Owner
+Deadline
+Priority
+Status
+Reminder Sent
+Created At
+```
+
+---
+
+## 5. Replace placeholders
+
+Update:
+
+```text
+{{YOUR_EMAIL}}
+{{GOOGLE_SHEETS}}
+{{GROQ_CREDENTIAL}}
+```
+
+---
+
+## 6. Execute workflow
+
+Run:
+
+```text
+Meeting Input
+↓
+Workflow Execution
+```
+
+---
+
+# Security Notes
+
+Never commit:
+
+- Real Gmail credentials
+- Groq API keys
+- Google Sheets OAuth IDs
+- Personal email addresses
+
+Use placeholders in public repositories.
 
 ---
 
 # Future Improvements
 
-* Zoom transcript integration
-* Google Meet integration
-* Telegram/Slack alerts
-* Deadline reminders
-* Dashboard analytics
-* Multi-user support
-* Whisper AI transcription
+- Zoom transcript integration
+- Google Meet integration
+- Slack / Telegram reminders
+- Dashboard analytics
+- Multi-user support
+- Calendar sync
+- Whisper transcription
+- CRM integration
 
 ---
 
-# Screenshots
+# Problem Solved
 
-## Workflow
+**Problem:**
 
-screenshots/meeting-automation-workflow.png
+People leave meetings, but action items disappear.
+
+**Solution:**
+
+Meeting notes → AI summary → task extraction → owner assignment → reminders → tracking
 
 ---
 
 # Author
 
-Jagadeesh S
+**Jagadeesh S**
+
+Built using n8n + Groq + Gmail + Google Sheets
