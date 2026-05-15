@@ -1,15 +1,86 @@
 {
-  "name": "Meeting Notes Automation",
   "nodes": [
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {
+          "maxTokensToSample": 500,
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        320
+      ],
+      "id": "d294c5cd-567a-43a1-88e8-a0cadd0ee5c2",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "{{GROQAPI_ID}}",
+          "name": "{{GROQAPI_NAME}}"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        784,
+        96
+      ],
+      "id": "9ac0449f-366b-4c75-808a-dd89d45b271f",
+      "name": "Meeting Input"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "45f8d401-412a-43bb-9c70-457310bc1ba1",
+              "name": "text",
+              "value": "{{MEETING_TRANSCRIPT}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        992,
+        96
+      ],
+      "id": "fcd69f42-197c-41a3-9f69-ba968d0448d8",
+      "name": "Meeting Transcript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Return ONLY valid JSON.\n\n{\n\"summary\": \"short meeting summary\",\n\"tasks\": [\n{\n\"task\": \"task name\",\n\"owner\": \"person responsible\",\n\"deadline\": \"YYYY-MM-DD\",\n\"priority\": \"High\"\n}\n]\n}\n\nRules:\n\n* No markdown\n* No explanation\n* No code block\n* No extra text\n* Priority must be High, Medium, or Low\n* If no deadline exists use \"TBD\"\n\nTranscript:\n{{ $json.text }}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1248,
+        96
+      ],
+      "id": "8dad4fc3-60ee-45cf-b724-4e4de21ec2df",
+      "name": "Generate Summary & Action Items"
+    },
     {
       "parameters": {
         "functionCode": "const raw = items[0].json.output || '';\n\ntry {\n\n  const parsed = JSON.parse(raw);\n\n  return [{\n    json: parsed\n  }];\n\n} catch (e) {\n\n  return [{\n    json: {\n      summary: \"AI parsing failed\",\n      tasks: []\n    }\n  }];\n\n}"
       },
       "id": "171df39a-3dda-4849-9585-78094f591761",
-      "name": "Parse AI Output",
+      "name": "Parse Meeting Insights",
       "type": "n8n-nodes-base.function",
       "position": [
-        1376,
+        1616,
         96
       ],
       "typeVersion": 1
@@ -19,10 +90,10 @@
         "functionCode": "if (!items[0].json.tasks || items[0].json.tasks.length === 0) {\n  return [];\n}\n\nreturn items[0].json.tasks\n  .filter(task =>\n    task.task &&\n    task.task.trim() !== ''\n  )\n  .map(task => ({\n    json: {\n      task: task.task || '',\n      owner: task.owner || 'Unassigned',\n      deadline: task.deadline || 'TBD',\n      priority: task.priority || 'Medium'\n    }\n  }));"
       },
       "id": "61a71029-ebee-45b5-b0a3-15cc85d4fcd5",
-      "name": "Convert Tasks to Items",
+      "name": "Extract Action Items",
       "type": "n8n-nodes-base.function",
       "position": [
-        1888,
+        1968,
         96
       ],
       "typeVersion": 1
@@ -32,17 +103,17 @@
         "operation": "append",
         "documentId": {
           "__rl": true,
-          "value": "1vP3YvUiinUWmtvfNDYX3IrdyEbD94xzITW0etMS5Akk",
+          "value": "{{DOCUMENTID}}",
           "mode": "list",
           "cachedResultName": "Meeting Tasks Tracker",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1vP3YvUiinUWmtvfNDYX3IrdyEbD94xzITW0etMS5Akk/edit?usp=drivesdk"
+          "cachedResultUrl": "{{REPLACE_LOCALLY}}"
         },
         "sheetName": {
           "__rl": true,
-          "value": "gid=0",
+          "value": "{{SHEETNAME}}",
           "mode": "list",
           "cachedResultName": "Sheet1",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1vP3YvUiinUWmtvfNDYX3IrdyEbD94xzITW0etMS5Akk/edit#gid=0"
+          "cachedResultUrl": "{{REPLACE_LOCALLY}}"
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -52,7 +123,8 @@
             "Deadline": "={{$json[\"deadline\"]}}",
             "Priority": "={{$json[\"priority\"]}}",
             "Status": "Pending",
-            "Created At": "={{$now}}"
+            "Created At": "={{$now}}",
+            "Reminder Sent": "no"
           },
           "matchingColumns": [],
           "schema": [
@@ -102,6 +174,16 @@
               "canBeUsedToMatch": true
             },
             {
+              "id": "Reminder Sent",
+              "displayName": "Reminder Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
               "id": "Created At",
               "displayName": "Created At",
               "required": false,
@@ -117,95 +199,23 @@
         "options": {}
       },
       "id": "561da70e-3e12-4982-889c-134062c61c7f",
-      "name": "Save to Sheets",
+      "name": "Store Tasks Tracker",
       "type": "n8n-nodes-base.googleSheets",
       "position": [
-        2160,
+        2256,
         96
       ],
       "typeVersion": 4.7,
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "m5nJSDOlmxk0sA00",
-          "name": "Google Sheets account"
-        }
-      }
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [
-        544,
-        96
-      ],
-      "id": "9ac0449f-366b-4c75-808a-dd89d45b271f",
-      "name": "When clicking ‘Execute workflow’"
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=Return ONLY valid JSON.\n\n{\n\"summary\": \"short meeting summary\",\n\"tasks\": [\n{\n\"task\": \"task name\",\n\"owner\": \"person responsible\",\n\"deadline\": \"YYYY-MM-DD\",\n\"priority\": \"High\"\n}\n]\n}\n\nRules:\n\n* No markdown\n* No explanation\n* No code block\n* No extra text\n* Priority must be High, Medium, or Low\n* If no deadline exists use \"TBD\"\n\nTranscript:\n{{ $json.text }}\n",
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 3.1,
-      "position": [
-        1008,
-        96
-      ],
-      "id": "8dad4fc3-60ee-45cf-b724-4e4de21ec2df",
-      "name": "AI Agent"
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "45f8d401-412a-43bb-9c70-457310bc1ba1",
-              "name": "text",
-              "value": "Date: 2 May 2026   Participants:   - Jagadeesh (Consultant)   - Adi (Client – Millet Powder Brand Owner)  ---  Adi: Currently I am running my millet powder business mainly through Instagram. Most of my orders come from DMs and WhatsApp messages.  Jagadeesh: Okay, so you don’t have a proper website or ordering system yet?  Adi: No, I don’t have any website. Everything is manual right now. I track orders in WhatsApp chats and sometimes in a notebook. It’s getting difficult to manage as orders are increasing.  Jagadeesh: Got it. That means you also don’t have a clear system to track total sales or customer data?  Adi: Yes, exactly. I don’t have proper tracking of daily or monthly sales. I also don’t have a customer database.  Jagadeesh: How are you handling customer support currently?  Adi: I reply manually on Instagram and WhatsApp. Sometimes I miss messages, especially when there are many inquiries.  Jagadeesh: Understood. What about your product certifications and licenses?  Adi: I have basic certifications, but they are not properly displayed anywhere online. Customers sometimes ask about authenticity.  Jagadeesh: That’s an important point. Having those visible builds trust.  Adi: Yes, I agree. I want to look more professional and scale the business.  Jagadeesh: Here’s what I suggest: 1. We create a proper website for your brand 2. Add an online ordering system 3. Track all orders and sales automatically 4. Set up a basic CRM for customer data 5. Display certifications clearly on the website 6. Improve customer support with a structured system  Adi: That sounds good. I really need all of that.  Jagadeesh: We can also integrate Instagram with your website so traffic converts better.  Adi: That would be very helpful.  Jagadeesh: I’ll help you set up everything step by step—from website to tracking and automation.  Adi: Perfect. Let’s proceed with that.  ---  Meeting End",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        752,
-        96
-      ],
-      "id": "fcd69f42-197c-41a3-9f69-ba968d0448d8",
-      "name": "Edit Fields"
-    },
-    {
-      "parameters": {
-        "model": "llama-3.1-8b-instant",
-        "options": {
-          "maxTokensToSample": 500,
-          "temperature": 0.1
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
-      "typeVersion": 1,
-      "position": [
-        1008,
-        320
-      ],
-      "id": "d294c5cd-567a-43a1-88e8-a0cadd0ee5c2",
-      "name": "Groq Chat Model",
-      "credentials": {
-        "groqApi": {
-          "id": "2tvWMKzbkfImX4Ri",
-          "name": "Groq account"
+          "id": "{{GOOGLESHEETSOAUTH2API_ID}}",
+          "name": "{{GOOGLESHEETSOAUTH2API_NAME}}"
         }
       }
     },
     {
       "parameters": {
-        "sendTo": "jagadeeshs4779@gmail.com",
+        "sendTo": "{{YOUR_EMAIL}}",
         "subject": "Meeting Recap & Action Items",
         "message": "=<h2>Meeting Summary</h2>\n\n<p>{{$json[\"summary\"]}}</p>\n\n<hr>\n\n<h2>Action Items</h2>\n\n<ul>\n{{\n$json[\"tasks\"].map(t =>\n\"<li><b>\" + t.task + \"</b><br>\" +\n\"Owner: \" + t.owner + \"<br>\" +\n\"Deadline: \" + (t.deadline || \"TBD\") + \"<br>\" +\n\"Priority: \" + (t.priority || \"Medium\") +\n\"</li><br>\"\n).join(\"\")\n}}\n</ul>\n\n<hr>\n\n<p><i>Generated automatically using AI meeting automation.</i></p>",
         "options": {
@@ -215,109 +225,311 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        1904,
-        320
+        1952,
+        304
       ],
       "id": "598e4ba6-4ffb-4711-be50-72f66aadd351",
-      "name": "Send a message",
+      "name": "Send Meeting Recap",
       "webhookId": "34b6b7c3-3c96-46f1-ab4f-2c95cfafaed4",
       "credentials": {
         "gmailOAuth2": {
-          "id": "MzCK1wWoAgbK5skR",
-          "name": "Gmail account"
+          "id": "{{GMAILOAUTH2_ID}}",
+          "name": "{{GMAILOAUTH2_NAME}}"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "586b91d5-a2a5-4cac-9747-f21b1133214b",
+              "leftValue": "={{$json[\"Status\"]}}",
+              "rightValue": "Pending",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2464,
+        96
+      ],
+      "id": "1b2aad99-580e-4ced-93bf-1e0011d466e4",
+      "name": "Check Pending Action Items"
+    },
+    {
+      "parameters": {
+        "sendTo": "{{YOUR_EMAIL}}",
+        "subject": "Reminder: Pending Meeting Action Item",
+        "message": "=<h2>Pending Task Reminder</h2>\n\n<p><b>Task:</b> {{$json[\"Task\"]}}</p>\n\n<p><b>Owner:</b> {{$json[\"Owner\"]}}</p>\n\n<p><b>Deadline:</b> {{$json[\"Deadline\"]}}</p>\n\n<p><b>Priority:</b> {{$json[\"Priority\"]}}</p>\n\n<p><b>Status:</b> {{$json[\"Status\"]}}</p>\n\n<hr>\n\n<p>Please review and complete this action item from the meeting.</p>\n",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2752,
+        80
+      ],
+      "id": "f94762c6-ac35-458d-ba16-9fb7f56b08b9",
+      "name": "Send Owner Reminder",
+      "webhookId": "54a228cd-7471-4599-9443-3288ab654a90",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "{{GMAILOAUTH2_ID}}",
+          "name": "{{GMAILOAUTH2_NAME}}"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "{{DOCUMENTID}}",
+          "mode": "list",
+          "cachedResultName": "Meeting Tasks Tracker",
+          "cachedResultUrl": "{{REPLACE_LOCALLY}}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "{{SHEETNAME}}",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "{{REPLACE_LOCALLY}}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Task": "={{$node[\"Store Tasks Tracker\"].json[\"Task\"]}}",
+            "Reminder Sent": "yes"
+          },
+          "matchingColumns": [
+            "Task"
+          ],
+          "schema": [
+            {
+              "id": "Task",
+              "displayName": "Task",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Owner",
+              "displayName": "Owner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Deadline",
+              "displayName": "Deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reminder Sent",
+              "displayName": "Reminder Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created At",
+              "displayName": "Created At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2960,
+        80
+      ],
+      "id": "62c74096-5278-4a2c-a8c2-cfb62240e9a0",
+      "name": "Mark Reminder Sent",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "{{GOOGLESHEETSOAUTH2API_ID}}",
+          "name": "{{GOOGLESHEETSOAUTH2API_NAME}}"
         }
       }
     }
   ],
-  "pinData": {},
   "connections": {
-    "Parse AI Output": {
-      "main": [
-        [
-          {
-            "node": "Convert Tasks to Items",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Send a message",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Convert Tasks to Items": {
-      "main": [
-        [
-          {
-            "node": "Save to Sheets",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "When clicking ‘Execute workflow’": {
-      "main": [
-        [
-          {
-            "node": "Edit Fields",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "AI Agent": {
-      "main": [
-        [
-          {
-            "node": "Parse AI Output",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Edit Fields": {
-      "main": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Groq Chat Model": {
       "ai_languageModel": [
         [
           {
-            "node": "AI Agent",
+            "node": "Generate Summary & Action Items",
             "type": "ai_languageModel",
             "index": 0
           }
         ]
       ]
     },
-    "Save to Sheets": {
+    "Meeting Input": {
       "main": [
-        []
+        [
+          {
+            "node": "Meeting Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meeting Transcript": {
+      "main": [
+        [
+          {
+            "node": "Generate Summary & Action Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Summary & Action Items": {
+      "main": [
+        [
+          {
+            "node": "Parse Meeting Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Meeting Insights": {
+      "main": [
+        [
+          {
+            "node": "Extract Action Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Meeting Recap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Action Items": {
+      "main": [
+        [
+          {
+            "node": "Store Tasks Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Tasks Tracker": {
+      "main": [
+        [
+          {
+            "node": "Check Pending Action Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Pending Action Items": {
+      "main": [
+        [
+          {
+            "node": "Send Owner Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Owner Reminder": {
+      "main": [
+        [
+          {
+            "node": "Mark Reminder Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
-  },
-  "versionId": "cfa84194-17c8-497e-9b18-5f6de3dbfb79",
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "b54ab3f2387a08ad41459dc70b5fa6c6b62400d3cba35fe5bdc357ca66bc9f6b"
-  },
-  "id": "FhYsCjCuC81l4jzS",
-  "tags": []
+  }
 }
